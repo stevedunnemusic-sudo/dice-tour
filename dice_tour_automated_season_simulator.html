@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dice Tour Championship</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin: 0; background:#0b1c2d; color:#fff; }
+    header { background:#081421; padding:20px; text-align:center; }
+    h1 { margin:0; font-size:32px; }
+    h2 { margin-top:30px; border-bottom:2px solid #1e90ff; padding-bottom:5px; }
+    table { width:100%; border-collapse: collapse; margin-top:10px; }
+    th, td { padding:8px; border-bottom:1px solid #333; text-align:left; }
+    th { background:#12263a; }
+    .container { max-width:1200px; margin:auto; padding:20px; }
+    .badge { padding:4px 8px; background:#1e90ff; border-radius:4px; font-size:12px; }
+    .match { padding:6px 0; }
+    .hidden { opacity:0.35; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Dice Tour Championship</h1>
+  <div>Automated Season Simulator</div>
+</header>
+
+<div class="container">
+  <h2>Current Tournament</h2>
+  <div id="currentTournament"></div>
+
+  <h2>This Week's Matches</h2>
+  <div id="matches"></div>
+
+  <h2>Rankings</h2>
+  <table id="rankings">
+    <thead>
+      <tr><th>Rank</th><th>Player</th><th>Nation</th><th>Dice</th><th>Points</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+// ---------------- PLAYERS ----------------
+let players = [
+  {name:"David Braun", nation:"Germany"},
+  {name:"Sarah O’Reilly", nation:"Ireland"},
+  {name:"Bradley Carpenter", nation:"UK"},
+  {name:"Jeanne Gondry", nation:"France"},
+  {name:"Javier Costa", nation:"Spain"},
+  {name:"Xavier Rui Mano", nation:"Portugal"},
+  {name:"Stefani Capri", nation:"Italy"},
+  {name:"Alandressa Athena", nation:"Cyprus"},
+  {name:"Tai Fung", nation:"China"},
+  {name:"Jasvinder Mann", nation:"India"},
+  {name:"Mohammed Ramallah", nation:"Pakistan"},
+  {name:"Sheila Barton", nation:"Australia"},
+  {name:"Helen Rosa", nation:"New Zealand"},
+  {name:"Esther Goldman", nation:"Israel"},
+  {name:"Raki Taliti", nation:"Tonga"},
+  {name:"Saito Asaka", nation:"Japan"},
+  {name:"Johanna Anders", nation:"South Africa"},
+  {name:"Brian Ntomo", nation:"Tanzania"},
+  {name:"Gala Mbabana", nation:"Namibia"},
+  {name:"Fiona Tressle", nation:"Eritrea"},
+  {name:"Ahmed Doma", nation:"Egypt"},
+  {name:"Christina Abula", nation:"Gambia"},
+  {name:"Farah Dili", nation:"Ethiopia"},
+  {name:"Safan Dissan", nation:"Kenya"},
+  {name:"Brian Coolidge", nation:"USA"},
+  {name:"Anthony Fortitu", nation:"Canada"},
+  {name:"Loco", nation:"Brazil"},
+  {name:"Diego Electrina", nation:"Argentina"},
+  {name:"Juan Kipi", nation:"Ecuador"},
+  {name:"Gilbert Marseille", nation:"Haiti"},
+  {name:"Arabelle Jameson", nation:"Jamaica"},
+  {name:"Esteban Cuertez", nation:"Mexico"}
+].map(p => ({...p, dice:10, points:0}));
+
+// ---------------- SEASON CONFIG ----------------
+const season = [
+  {date:"2026-01-19", name:"French Open", code:"A"},
+  {date:"2026-01-26", name:"Italian Open", code:"A"},
+  {date:"2026-02-02", name:"Spanish Open", code:"A"},
+  {date:"2026-02-09", name:"British Open", code:"A"},
+  {date:"2026-02-16", name:"German Open", code:"A"},
+  {date:"2026-02-23", name:"Greek Open", code:"A"},
+  {date:"2026-03-02", name:"European Grand Prix", code:"B"},
+  {date:"2026-03-09", name:"European Championship", code:"C"},
+  {date:"2026-03-16", name:"European Masters", code:"D"},
+  {date:"2026-03-23", name:"EURO GRANDSLAM", code:"E"}
+];
+
+const rankingPoints = {
+  A: {W:8, RU:4, SF:3, QF:2, R2:1},
+  B: {W:9, RU:5, SF:4, QF:3},
+  C: {W:10, RU:6, SF:5},
+  D: {W:11, RU:7},
+  E: {W:15, RU:10, SF:8, QF:5, R2:3}
+};
+
+// ---------------- DICE ENGINE ----------------
+function rollDice(n){ return Array.from({length:n},()=>Math.ceil(Math.random()*6)).reduce((a,b)=>a+b,0); }
+function playMatch(a,b){ let sa,sb; do{ sa=rollDice(a.dice); sb=rollDice(b.dice);}while(sa===sb);
+  let winner = sa>sb?a:b; let loser = sa>sb?b:a;
+  winner.dice++; loser.dice=Math.max(1,loser.dice-1);
+  return winner;
+}
+
+// ---------------- TOURNAMENT ENGINE ----------------
+function simulateTournament(entrants){
+  let rounds=[]; let round=entrants.slice();
+  while(round.length>1){
+    let next=[]; let matches=[];
+    for(let i=0;i<round.length;i+=2){
+      let a=round[i], b=round[i+1];
+      let w=playMatch(a,b);
+      next.push(w);
+      matches.push({a,b,w});
+    }
+    rounds.push(matches);
+    round=next;
+  }
+  return rounds;
+}
+
+// ---------------- DATE LOGIC ----------------
+const today = new Date();
+const current = season.find(s => today >= new Date(s.date) && today < new Date(new Date(s.date).getTime()+7*86400000));
+
+// ---------------- RENDER ----------------
+if(current){
+  document.getElementById('currentTournament').innerHTML = `<strong>${current.name}</strong> <span class='badge'>Code ${current.code}</span>`;
+
+  let sorted = [...players].sort((a,b)=>b.points-a.points || b.dice-a.dice);
+  let entrants = current.code==='A'||current.code==='E'?sorted:
+                 current.code==='B'?sorted.slice(0,16):
+                 current.code==='C'?sorted.slice(0,8):sorted.slice(0,4);
+
+  if(current.code==='A') entrants.sort(()=>Math.random()-0.5);
+  if(current.code==='E'||current.code!=='A') entrants = entrants.sort((a,b)=>sorted.indexOf(a)-sorted.indexOf(b));
+
+  let rounds = simulateTournament(entrants);
+
+  const day = today.getDay(); // Mon=1
+  const matchesDiv = document.getElementById('matches');
+
+  rounds.forEach((round,ri)=>{
+    round.forEach(m=>{
+      let visible = (ri===0 && day>=1) || (ri===1 && day>=3) || (ri===2 && day>=4) || (ri===3 && day>=5);
+      matchesDiv.innerHTML += `<div class='match ${visible?"":"hidden"}'>${m.a.name} vs ${m.b.name} ${visible?`→ ${m.w.name}`:""}</div>`;
+    });
+  });
+}
+
+players.sort((a,b)=>b.points-a.points || b.dice-a.dice);
+const tbody = document.querySelector('#rankings tbody');
+players.forEach((p,i)=>{
+  tbody.innerHTML += `<tr><td>${i+1}</td><td>${p.name}</td><td>${p.nation}</td><td>${p.dice}</td><td>${p.points}</td></tr>`;
+});
+</script>
+</body>
+</html>
